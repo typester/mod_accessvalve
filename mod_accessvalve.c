@@ -215,6 +215,7 @@ URIHANDLER_FUNC(mod_accessvalve_uri_handler) {
     if (!rec->banned_until && (--rec->tokens < 0)) {
         log_error_write(srv, __FILE__, __LINE__, "ss", "Banned:", inet_ntop_cache_get_ip(srv, &rec->addr));
         rec->banned_until = time(NULL) + p->conf.ban_duration;
+        rec->reset_when   = rec->banned_until;
     }
 
     if (rec->banned_until) {

@@ -14,7 +14,7 @@
 /* plugin config for all request/connections */
 typedef struct {
     int bucket_size;
-    int reset_duration;
+    int reset_interval;
     int ban_duration;
     int _cond_pos;  /* internal only */
 } plugin_config;
@@ -89,7 +89,7 @@ SETDEFAULTS_FUNC(mod_accessvalve_set_defaults) {
 
     config_values_t cv[] = {
         { "accessvalve.bucket-size",    NULL, T_CONFIG_SHORT, T_CONFIG_SCOPE_CONNECTION },       /* 0 */
-        { "accessvalve.reset-duration", NULL, T_CONFIG_SHORT, T_CONFIG_SCOPE_CONNECTION },       /* 1 */
+        { "accessvalve.reset-interval", NULL, T_CONFIG_SHORT, T_CONFIG_SCOPE_CONNECTION },       /* 1 */
         { "accessvalve.ban-duration",   NULL, T_CONFIG_SHORT, T_CONFIG_SCOPE_CONNECTION },       /* 2 */
         { NULL,                         NULL, T_CONFIG_UNSET, T_CONFIG_SCOPE_UNSET }
     };
@@ -105,12 +105,12 @@ SETDEFAULTS_FUNC(mod_accessvalve_set_defaults) {
 
         s = calloc(1, sizeof(plugin_config));
         s->bucket_size    = 0;
-        s->reset_duration = 60;
+        s->reset_interval = 60;
         s->ban_duration   = 900;
         s->_cond_pos      = i;
 
         cv[0].destination = &(s->bucket_size);
-        cv[1].destination = &(s->reset_duration);
+        cv[1].destination = &(s->reset_interval);
         cv[2].destination = &(s->ban_duration);
 
         p->config_storage[i] = s;
@@ -136,7 +136,7 @@ static int mod_accessvalve_patch_connection(server *srv, connection *con, plugin
     int merged = 0;
 
     PATCH(bucket_size);
-    PATCH(reset_duration);
+    PATCH(reset_interval);
     PATCH(ban_duration);
     PATCH(_cond_pos);
 
@@ -156,8 +156,8 @@ static int mod_accessvalve_patch_connection(server *srv, connection *con, plugin
                 PATCH(bucket_size);
                 merged++;
             }
-            else if (buffer_is_equal_string(du->key, CONST_STR_LEN("accessvalve.reset-duration"))) {
-                PATCH(reset_duration);
+            else if (buffer_is_equal_string(du->key, CONST_STR_LEN("accessvalve.reset-interval"))) {
+                PATCH(reset_interval);
                 merged++;
             }
             else if (buffer_is_equal_string(du->key, CONST_STR_LEN("accessvalve.ban-duration"))) {
@@ -191,7 +191,7 @@ static ip_record *get_or_create_ip_record(server *srv, connection *con, plugin_d
 
     new_record->addr = con->dst_addr;
     new_record->tokens = p->conf.bucket_size;
-    new_record->reset_when = time(NULL) + p->conf.reset_duration;
+    new_record->reset_when = time(NULL) + p->conf.reset_interval;
     new_record->banned_until = 0;
     new_record->conf = &(p->conf);
     new_record->next = NULL;
@@ -229,7 +229,7 @@ URIHANDLER_FUNC(mod_accessvalve_uri_handler) {
             log_error_write(srv, __FILE__, __LINE__, "ss", "Unbanned:", inet_ntop_cache_get_ip(srv, &rec->addr));
             rec->banned_until = 0;
             rec->tokens = p->conf.bucket_size;
-            rec->reset_when = time(NULL) + p->conf.reset_duration;
+            rec->reset_when = time(NULL) + p->conf.reset_interval;
         }
     }
 
@@ -258,7 +258,7 @@ TRIGGER_FUNC(mod_accessvalve_trigger) {
                 }
                 cur->banned_until = 0;
                 cur->tokens = cur->conf->bucket_size;
-                cur->reset_when = time(NULL) + cur->conf->reset_duration;
+                cur->reset_when = time(NULL) + cur->conf->reset_interval;
             }
 
             prev = cur, cur = cur->next;

@@ -247,8 +247,8 @@ TRIGGER_FUNC(mod_accessvalve_trigger) {
             if (cur->tokens == cur->conf->bucket_size) {
                 /* remove */
                 prev->next = cur->next;
-                prev = cur, cur = cur->next;
-                free(prev);
+                free(cur);
+                cur = prev->next;
                 continue;
             }
 
